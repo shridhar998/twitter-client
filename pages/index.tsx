@@ -1,10 +1,16 @@
 import { Inter } from 'next/font/google'
 import {BsTwitter, BsSearch, BsCardChecklist, BsPeople, BsPerson} from "react-icons/bs"
-import React from 'react';
+import React,{useCallback} from 'react';
 import {BiHomeCircle} from 'react-icons/bi'
 import { VscBell } from "react-icons/vsc";
 import {FiMail} from 'react-icons/fi';
 import FeedCard from '@/components/FeedCard';
+import {CredentialResponse, GoogleLogin} from '@react-oauth/google';
+import toast from 'react-hot-toast';
+import { graphqlClient } from '@/clients/api';
+import { verifyGoogleTokenQuery } from '@/graphql/queries/user';
+
+// 
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -44,7 +50,24 @@ const sideBarMenuButton : TwitterSidebarButton[] = [
 ];
 
 export default function Home() {
+  const handleLoginWithGoogle =useCallback(async(cred : CredentialResponse) => {
+      const googleToken = cred.credential 
+      if(!googleToken){
+        return toast.error('Google Token not found')
+      }
+      const { verifyGoogleToken} = await graphqlClient.request(
+        verifyGoogleTokenQuery,
+        {token:googleToken}
+      );
+
+      toast.success('Verified Success');
+      console.log(verifyGoogleToken)
+      if(verifyGoogleToken){
+        window.localStorage.setItem('__twitter_token',verifyGoogleToken);
+      }
+    },[])
   
+
   return (
     <div className='grid grid-cols-12 h-screen w-screen px-56'>
       <div className='col-span-3 flex justify-start pt-8'>
@@ -83,7 +106,15 @@ export default function Home() {
         <FeedCard/>
       </div>
 
-      <div className='col-span-3 flex justify-end pt-8'>
+      <div className='col-span-3 p-5'>
+        <div className='bg-slate-500 rounded-lg p-5 w-fit'>
+          <h1 className='text-2xl my-2'>New to Twitter?</h1>
+          <GoogleLogin
+          onSuccess={(cred)=>{
+            handleLoginWithGoogle(cred)
+          }}
+          />
+        </div>
       </div>
     </div>
   )
